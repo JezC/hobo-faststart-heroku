@@ -117,10 +117,8 @@ fi
 
 cd ${PROJECT_NAME}
 
-if [ -d .git ]
-	then
-		# Git exists - do nothing
-	else
+if [ ! -d .git ]
+then
 	echo "Hobo Wizard must generate initial git - and failed to do so for some reason"
 	exit 1
 fi
@@ -134,7 +132,8 @@ heroku update
 
 # Add Procfile
 
-cat > Profile << HERE
+cat > Procfile << HERE
+web: bundle exec rails server -p $PORT
 HERE
 
 # Add unicorn to the gemset and configure it
@@ -151,17 +150,25 @@ if ! git push
 	echo "Failed to push to the shared repo - bailing out; must set up heroku production server"
 fi
 
-if ! git push staging master
+git config heroku.remote staging
+git config push.default tracking
+git checkout -b staging --track staging/master
+
+if ! git push heroku
 	then
 	echo "Failed to push to the staging server; need to set up heroku production server"
 fi
 
-git config heroku.remote staging
-
-heroku run rake db:migrate
+if ! heroku run rake db:migrate
+then
+	echo "I dunno. Something failed running the rake. Need to sort that and get the "
+	exit 1
+fi
 
 if ! heroku apps:create --region=${HEROKU_REGION} --addons heroku-postgresql,mailgun --remote production
 	then
 	echo "Failed to create Heroku production server with addons"
 	exit 1
 fi
+
+git branch --set-upstream master production/master

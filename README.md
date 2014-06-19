@@ -30,29 +30,44 @@ But I did want the most recent stable Ruby and the most recent stable Hobo. Just
 
 Fork/clone this repo. Run the script with the name of a new project, and you'll get a newly built directory with a staging and a production heroku server (default push is to staging), configured for bitbucket (my preferred Git repo), and the basic app pushed to staging, with the db:migration done for the core Users model.
 
+You'll have a branch - 'staging'. When you develop, commit changes to staging and push to heroku from there. When you're ready, merge staging into master, and push from there to the live production server. Simples.
+
 $ ./gen-my-project {name}
 
 This script will:
 
-- grab rvm
+- grab/update rvm
 - install/update MRI ruby
 - create a project gemset
 - install gems needed to run hobo
-- check that you have a local postgresql
-- prepare for a project database (production, development and test)
+- prepare database user for a project
 - generate a hobo app using postgresql
-- put the ruby and gemset declarations in the project Gemfile
-- store default Hobo admin credentials or use them for future projects, and set them up in the DB seed
-- store MailGun API Key for this project out of the project tree
-- create a heroku live server and a staging server, with addons for Heroku POstgres and MailGun for email activation
-- configure git to push to heroku servers off the branches 'master' and 'staging'
-- TODO: give you core hobo feature tests (basic user admin)
-- TODO: set up and read from a home directory confguration the defaults that you want for your admin account and create the seed
+- update heroku toolbelt
+- create a heroku live server and a staging server, with addons for Heroku Postgres and MailGun for email activation
+- configure project git to push to a bitbucket project
+- configure git to push to heroku servers off the branches 'master' and 'staging', default is staging
+- TODO: put the ruby and gemset declarations in the project Gemfile
+- TODO: store default Hobo admin credentials or use them for future projects, and set them up in the DB seed
+- TODO: store MailGun API Key for this project out of the project tree
+- TODO: give you core hobo feature tests (basic user admin tests with cucumber)
 - TODO: run your initial cucumber tests
-- push it to staging
-- create some aliases so that standard sequences of hobo activity get done (closest approach to continuous deployment)
-- set up bitbucket repo and push to that
+- push the current iteration to staging
+- TODO: create some aliases so that standard sequences of hobo activity get done (closest approach to continuous deployment)
 
 In other words, once you've run this, you're ready to rip on adding models, tweaking access control and views, and it can be made visible in two steps - stage and live, with a basic BDD env in place. 
 
 And, with the exception of getting stuff ready to use, you can abandon the rvm installation used to create the environment, or use a different repo hosting service (erm, GitHub?)
+
+# Aftercare
+
+- 'git checkout staging'
+- do the work, with branches off staging if needed
+- merge changes to staging
+- 'git push heroku' will push the staging branch to the staging server for testing/demo
+- switch to the master branch when happy, and merge your staging branch, the 'git push heroku' will push to the live server
+
+There's some other bits that I constantly forget. I'll be poking around automating those.
+
+'hobo g migration' - run this all the time
+
+'rake db:migrate' - and remember to do this on the servers; some simple deploy script. Not Puppet - too much overhead for this type of project?
