@@ -180,6 +180,15 @@ cat >> Gemfile << HERE
 gem 'rails_12factor'
 HERE
 
+bundle install
+
+git config --global push.default simple
+git config heroku.remote staging
+git config push.default tracking
+git add Procfile config/unicorn.rb Gemfile
+git commit -am "Heroku config"
+git checkout -b staging --track staging/master
+
 if ! heroku apps:create --region=${HEROKU_REGION} --addons heroku-postgresql,mailgun --remote staging
 	then
 	echo "Failed to create Heroku staging server with addons"
@@ -191,9 +200,6 @@ if ! git push
 	echo "Failed to push to the shared repo - bailing out; must set up heroku production server"
 fi
 
-git config heroku.remote staging
-git config push.default tracking
-git checkout -b staging --track staging/master
 
 if ! git push heroku
 	then
