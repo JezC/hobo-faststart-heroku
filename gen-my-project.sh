@@ -128,16 +128,57 @@ curl -k -X POST --user "${bitbucket_user}:${bitbucket_password}" https://api.bit
 
 git remote add origin git@bitbucket.org:${bitbucket_user}/${PROJECT_NAME}
 
-heroku update
+echo "### Updating Heroku"
+if apt-get -v 2>&1 > /dev/null
+then
+  apt-get install heroku-toolbelt
+else
+  heroku update
+fi
 
+echo "### Adding heroku features"
 # Add Procfile
 
 cat > Procfile << HERE
-web: bundle exec rails server -p $PORT
+web: bundle exec unicorn -p $PORT -c ./config/unicorn.rb
 HERE
 
 # Add unicorn to the gemset and configure it
+cat >> Gemfile << HERE
 
+gem 'unicorn'
+HERE
+
+cat >> config/unicorn.rb << HERE
+worker_processes Integer(ENV["WEB_CONCURRENCY"] || 3)
+timeout 15
+preload_app true
+
+before_fork do |server, worker|
+  Signal.trap 'TERM' do
+    puts 'Unicorn master intercepting TERM and sending myself QUIT instead'
+    Process.kill 'QUIT', Process.pid
+  end
+
+  defined?(ActiveRecord::Base) and
+    ActiveRecord::Base.connection.disconnect!
+end
+
+after_fork do |server, worker|
+  Signal.trap 'TERM' do
+    puts 'Unicorn worker intercepting TERM and doing nothing. Wait for master to send QUIT'
+  end
+
+  defined?(ActiveRecord::Base) and
+    ActiveRecord::Base.establish_connection
+end
+HERE
+
+# add rails_12factor
+cat >> Gemfile << HERE
+
+gem 'rails_12factor'
+HERE
 
 if ! heroku apps:create --region=${HEROKU_REGION} --addons heroku-postgresql,mailgun --remote staging
 	then
