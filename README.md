@@ -40,19 +40,20 @@ This script will:
 - install/update MRI ruby
 - create a project gemset
 - install gems needed to run hobo
-- prepare database user for a project
+- install debugging gems
+- install TDD/BDD gems, including headless JS testing support (e.g.Nitrous, Cloud9, etc)
+- create database user for the project
 - generate a hobo app using postgresql
 - update heroku toolbelt
 - create a heroku live server and a staging server, with addons for Heroku Postgres and MailGun for email activation
 - configure project git to push to a bitbucket project
 - configure git to push to heroku servers off the branches 'master' and 'staging', default is staging
 - TODO: put the ruby and gemset declarations in the project Gemfile
-- TODO: store default Hobo admin credentials or use them for future projects, and set them up in the DB seed
-- TODO: store MailGun API Key for this project out of the project tree
+- store default Hobo admin credentials or use them for future projects, and set them up in the DB seed
 - TODO: give you core hobo feature tests (basic user admin tests with cucumber)
 - TODO: run your initial cucumber tests
 - push the current iteration to staging
-- TODO: create some aliases so that standard sequences of hobo activity get done (closest approach to continuous deployment)
+- TODO: create some aliases so that standard sequences of hobo activity get done
 - clean up the temporary Gemfile & lock in the parent directory, created to make the hobo install better... Doesn't handle an existing Gemfile at all
 
 In other words, once you've run this, you're ready to rip on adding models, tweaking access control and views, and it can be made visible in two steps - stage and live, with a basic BDD env in place. 
@@ -66,7 +67,7 @@ There is a matching script - 'remove-my-project.sh' - that tries to undo everyth
 * destroy the gemset
 * remove the directory
 
-What it can not do, so far, is to remove the repository on BitBucket. But the rest is trashed.
+What it does not do, so far, is to remove the repository on BitBucket. But the rest is trashed.
 
 # Environment
 
@@ -79,6 +80,10 @@ What it can not do, so far, is to remove the repository on BitBucket. But the re
 * bitbucket\_name=friendly\_user\_name
 * bitbucket\_email=registered\_email\_address
 * bitbucket\_password=annoyingly\_plain\_text\_password
+
+* hfs\_username= a default for the administrator, details dropped into seed.rb
+* hfs\_email\_address= default administrator email, dropped into seed.rb
+* hfs\_password= default password for a new app, used in seed.rb
 
 At the moment, the script assumes use of bitbucket. Why BitBucket? 
 Free for small teams of up to 5 - yay! Even with private repos. More Yaying! 

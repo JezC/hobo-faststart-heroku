@@ -134,8 +134,6 @@ fi
 # Must set up Git Repo before the heroku app is created
 curl -k -X POST --user "${bitbucket_email}:${bitbucket_password}" "https://api.bitbucket.org/1.0/repositories" -d "name=${PROJECT_NAME}&language=ruby&is_private=true"
 
-exit 1
-
 git remote add origin git@bitbucket.org:${bitbucket_name}/${PROJECT_NAME}
 git push origin master
 
@@ -222,6 +220,7 @@ end
 
 group :test do
 	gem 'cucumber-rails'
+  gem 'capybara-webkit'
 	gem 'shoulda-matchers'
 	gem 'factory_girl_rails'
 	gem 'database_cleaner'
@@ -238,25 +237,25 @@ gem install brakeman
 
 if ! bundle install
 then
-	echo "Like. No. The dev and test gems are broked."
+	echo "Like. No. The dev and test gems are broked. Annoyance. Griefing."
 	exit 1
 fi
 
+# add the test harness pieces
 rails g rspec:install
 rails g cucumber:install
 
-bundle install
-
-git config --global push.default simple
+# Now go to town on sorting out git repos
+git config push.default simple
 git config heroku.remote staging
 git config push.default tracking
-git add Procfile config/unicorn.rb Gemfile
+git add Procfile config/unicorn.rb Gemfile*
 git commit -am "Heroku config"
 git checkout -b staging --track staging/master
 
 if ! heroku apps:create --region=${HEROKU_REGION} --addons heroku-postgresql,mailgun --remote staging
 	then
-	echo "Failed to create Heroku staging server with addons"
+  	echo "Failed to create Heroku staging server with addons"
 	exit 1
 fi
 

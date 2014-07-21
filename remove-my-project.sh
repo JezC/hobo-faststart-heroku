@@ -60,7 +60,7 @@ source "$HOME/.rvm/scripts/rvm"
 ###### End of section shared with gen-my-project
 
 # get bitbucket ID, remove it
-if [ -d ${PROJECT_NAME}]
+if [ -d "${PROJECT_NAME}" ]
 then
 	cd ${PROJECT_NAME}
 	bitbucket_id=$(git remote -v | grep "^origin.*fetch" | sed -e 's/^origin //' -e 's/ (fetch)//')
@@ -68,9 +68,9 @@ then
 fi
 
 # get heroku staging app ID, remove it
-if [ -d ${PROJECT_NAME}]
+if [ -d "${PROJECT_NAME}" ]
 then
-	cd ${PROJECT_NAME}
+	cd "${PROJECT_NAME}"
 	heroku_staging_id=$(git remote -v | grep "^staging.*fetch" | sed -e 's/^staging.git@heroku.com://' -e 's/.git (fetch)//')
 	if [ -n "${heroku_staging_id}" ]
 	then
@@ -85,15 +85,15 @@ then
 fi
 
 # get database ID and remove tables, remove user
-# TODO: drop tables
+# drop tables
 dropdb "${PROJECT_NAME}_development"
 dropdb "${PROJECT_NAME}_test"
 dropdb "${PROJECT_NAME}"
-# TODO: drop user
+# drop user
 dropuser "${PROJECT_NAME}"
-
-# remove project directory
-# rm -rf ${PROJECT_NAME}
 
 # remove project gemset
 rvm gemset delete ${PROJECT_NAME}
+
+# remove project directory
+# rm -rf ${PROJECT_NAME}
