@@ -12,17 +12,19 @@ RC_FILE=~/.hobo_faststart.rc
 
 if [ ! -f ${RC_FILE} ]
 	then
-	echo "Must have a ~/.hobo_faststart.rc with 'bitbucket_name=username' and 'bitbucket_password=password'"
+	echo "Must have a ~/.hobo_faststart.rc with 'bitbucket_name=username', 'bitbucket_email=email@address' and 'bitbucket_password=password'"
 	exit 1
 else
+  # This is horrible. Look for lines with environment variable that we want, at least. Then 
+  # read in those values to the shell parameter, encoded to defuse malicious or silly problems.
 	source ${RC_FILE}
 fi
 
 # use RUBY_REVISION because rvm uses RUBY_VERSION, and we get usage conflicts. The peril of sourcing scripts.
 
 RUBY_REVISION=2.1.2
-HOBO_VERSION=2.1.0
-RAILS_VERSION=4.0.5
+HOBO_VERSION=2.1.1
+RAILS_VERSION=4.0.8
 HEROKU_REGION=eu
 
 # Get a project name, or die on fail
@@ -51,7 +53,9 @@ fi
 
 # heroku toolbelt update - get it over sooner rather than failing later
 # TODO: Linux distros probably need apt-get or other stuff
-heroku update
+# and if on Nitrous they maintain the toolbelt... IOW, this is hideously complicated for a simple step
+# Try something simple...
+heroku update || apt-get install heroku-toolbet
 
 # we want rvm to run as the function - so we can switch rubies, gemsets, etc.
 
@@ -128,9 +132,11 @@ then
 fi
 
 # Must set up Git Repo before the heroku app is created
-curl -k -X POST --user "${bitbucket_user}:${bitbucket_password}" "https://api.bitbucket.org/1.0/repositories" -d "name=${PROJECT_NAME}"
+curl -k -X POST --user "${bitbucket_email}:${bitbucket_password}" "https://api.bitbucket.org/1.0/repositories" -d "name=${PROJECT_NAME}&language=ruby&is_private=true"
 
-git remote add origin git@bitbucket.org:${bitbucket_user}/${PROJECT_NAME}
+exit 1
+
+git remote add origin git@bitbucket.org:${bitbucket_name}/${PROJECT_NAME}
 git push origin master
 
 git config push.default tracking
@@ -149,65 +155,8 @@ else
 fi
 
 echo "### Adding heroku features"
-# Add Procfile
 
-cat > Procfile << HERE
-web: bundle exec unicorn -c config/unicorn.rb -p \${PORT}
-HERE
-
-# Add unicorn to the gemset and configure it
-cat >> Gemfile << HERE
-
-gem 'unicorn'
-
-group :development do
-	# if ruby > 2.0
-	gem 'jazz_hands'
-	gem 'better_errors', :require => false
-	gem 'binding_of_caller', :require => false
-	gem 'meta_request', :require => false
-	gem 'awesome_print', :require => false
-	gem 'quiet_assets', :require => false
-	gem 'bullet', :require => false
-	gem 'flay', :require => false
-	gem 'rails_best_practices', :require => false
-	gem 'reek', :require => false
-	gem 'brakeman', :require => false
-end
-
-# rspec is in development and test so that developer tools can run without RAILS_ENV=test
-group :development, :test do
-  gem 'rspec-rails', '~> 2.0'
-  # if ruby > 2.0, use pry
-  gem 'pry-rails'
-  gem 'pry-byebug'
-  # else
-  # gem 'debugger', :require => false
-end
-
-group :test do
-	gem 'cucumber-rails', :require => false
-	gem 'shoulda-matchers', :require => false
-	gem 'factory_girl_rails', :require => false
-	gem 'database_cleaner', :require => false
-	gem 'selenium-webdriver', :require => false
-end
-
-group :production do
-	gem 'rails_12factor'
-end
-HERE
-
-if ! bundle install
-then
-	echo "Like. No. The dev and test gems are broked."
-	exit 1
-fi
-
-rails g rspec:install
-rails g cucumber:install
-
-# add unicorn configuration - Heroku default
+# add unicorn configuration - a standard Heroku server
 cat > config/unicorn.rb << HERE
 worker_processes Integer(ENV["WEB_CONCURRENCY"] || 3)
 timeout 15
@@ -232,6 +181,69 @@ after_fork do |server, worker|
     ActiveRecord::Base.establish_connection
 end
 HERE
+
+# Add Procfile
+
+cat > Procfile << HERE
+web: bundle exec unicorn -c config/unicorn.rb -p \${PORT}
+HERE
+
+# Add unicorn and a bunch of handy gems to the gemset and configure it
+cat >> Gemfile << HERE
+
+gem 'unicorn'
+
+platforms :ruby_19 do
+  group :development, :test do
+    gem 'debugger'
+  end
+end
+
+platforms :ruby_21, :ruby_21 do
+  group :development, :test do
+    gem 'pry'
+  end
+end
+
+group :development do
+	gem 'better_errors' # more useful error page
+	gem 'binding_of_caller' # error page has REPL
+	gem 'meta_request' # Chrome developer panel include controller, etc details
+	gem 'awesome_print' # prettier printing in REPL
+	gem 'quiet_assets' # suppress unhelpful noise
+	gem 'bullet' # watches queries to help you optimise them
+	gem 'metric_fu' # many diagnostics - flog, flay, rails best practices, etc, etc
+end
+
+# rspec is in development and test so that developer tools can run without RAILS_ENV=test
+group :development, :test do
+  gem 'rspec-rails', '~> 2.0'
+end
+
+group :test do
+	gem 'cucumber-rails'
+	gem 'shoulda-matchers'
+	gem 'factory_girl_rails'
+	gem 'database_cleaner'
+	gem 'selenium-webdriver'
+end
+
+group :production do
+	gem 'rails_12factor'
+end
+HERE
+
+# Also include some security checks - but don't include them in the Gemfile
+gem install brakeman
+
+if ! bundle install
+then
+	echo "Like. No. The dev and test gems are broked."
+	exit 1
+fi
+
+rails g rspec:install
+rails g cucumber:install
 
 bundle install
 
@@ -349,5 +361,9 @@ then
 	echo "I dunno. Something failed running the rake. Need to sort that and get the databse working."
 	exit 1
 fi
+
+# On Successful Exit (trap 0)?
+cd ..
+rm Gemfile Gemfile.lock
 
 echo "Should be all ready. Now get Twitter & Facebook keys and secrets and use heroku config:set TWITTER_KEY={TWITTER_KEY} to set them up"

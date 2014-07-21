@@ -53,21 +53,57 @@ This script will:
 - TODO: run your initial cucumber tests
 - push the current iteration to staging
 - TODO: create some aliases so that standard sequences of hobo activity get done (closest approach to continuous deployment)
+- clean up the temporary Gemfile & lock in the parent directory, created to make the hobo install better... Doesn't handle an existing Gemfile at all
 
 In other words, once you've run this, you're ready to rip on adding models, tweaking access control and views, and it can be made visible in two steps - stage and live, with a basic BDD env in place. 
 
 And, with the exception of getting stuff ready to use, you can abandon the rvm installation used to create the environment, or use a different repo hosting service (erm, GitHub?)
 
+There is a matching script - 'remove-my-project.sh' - that tries to undo everything.
+
+* drop the databases
+* remove the DB user
+* destroy the gemset
+* remove the directory
+
+What it can not do, so far, is to remove the repository on BitBucket. But the rest is trashed.
+
+# Environment
+
+* WEB\_CONCURRENCY=1 for development
+* WEB\_CONCURRENCY=3 (or whatever) for deployment and staging
+
+* PORT=3000 sets the PORT number for development
+* PORT=80 (or 443) sets the PORT number for deployment/staging
+
+* bitbucket\_name=friendly\_user\_name
+* bitbucket\_email=registered\_email\_address
+* bitbucket\_password=annoyingly\_plain\_text\_password
+
+At the moment, the script assumes use of bitbucket. Why BitBucket? 
+Free for small teams of up to 5 - yay! Even with private repos. More Yaying! 
+It should be fairly easy to tweak for other repositories.
+
+# Files
+
+## ~/.hobo\_faststart.rc
+
+Contains default environment paramaters, as above.
+
 # Aftercare
 
-- 'git checkout staging'
-- do the work, with branches off staging if needed
+- `git checkout staging`
+- do the work, with branches off staging
 - merge changes to staging
-- 'git push heroku' will push the staging branch to the staging server for testing/demo
-- switch to the master branch when happy, and merge your staging branch, the 'git push heroku' will push to the live server
+- `git push staging` will push the staging branch to the staging server for testing/demo
+- switch to the master branch when happy, and merge your staging branch, then `git push production` will push to the live server
+- security checkers - brakeman, etc - help you monitor whether your gems are vulnerable (or, perhaps more accurately, "known to be vulnerable")
+- static analysis tools - the metrics\_fu collection - help look for dodgy code practices and problems
 
 There's some other bits that I constantly forget. I'll be poking around automating those.
 
-'hobo g migration' - run this all the time
+`hobo g migration` - run this all the time; if anything stops working, run it... run it before doing a commit.
 
-'rake db:migrate' - and remember to do this on the servers; some simple deploy script. Not Puppet - too much overhead for this type of project?
+`rails s` - still used because of the REPL in better\_errors with binding\_of\_caller; while there are tricks like reducing the number of concurrent servers for Unicorn, there's still an advantage in using older, clunkier, single threading servers in development.
+
+`rake db:migrate` - and remember to do this on the servers; TODO: some simple deploy script with triggers. Not Puppet - too much overhead for this type of project? Capistrano?
